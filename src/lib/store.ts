@@ -1,28 +1,40 @@
 import { create } from "zustand";
-import Session from "supertokens-web-js/recipe/session";
+import {type AuthSnapshot, getAuthSnapshot, signOut} from "./auth.ts";
 
 interface AuthState {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  checkSession: () => Promise<void>;
+  status: "unknown" | "authenticated" | "unauthenticated";
+  userId?: string;
+  refresh: () => Promise<AuthSnapshot>;
   logout: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>(set => ({
-  isAuthenticated: false,
-  isLoading: true,
+  status: "unknown",
 
-  checkSession: async () => {
-    try {
-      const hasSession = await Session.doesSessionExist();
-      set({ isAuthenticated: hasSession, isLoading: false });
-    } catch {
-      set({ isAuthenticated: false, isLoading: false });
+  refresh: async () => {
+    const snapshot = await getAuthSnapshot();
+
+    if (snapshot.status === "unauthenticated") {
+      set({
+        status: "unauthenticated",
+        userId: undefined,
+      })
+    } else {
+      set({
+        status: "authenticated",
+        userId: snapshot.userId,
+      })
     }
+
+    return snapshot;
   },
 
   logout: async () => {
-    await Session.signOut();
-    set({ isAuthenticated: false });
+    await signOut();
+
+    set({
+      status: "unauthenticated",
+      userId: undefined,
+    })
   }
 }))

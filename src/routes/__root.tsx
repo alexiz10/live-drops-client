@@ -10,11 +10,11 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, checkSession, logout } = useAuthStore();
+  const { status, refresh, logout } = useAuthStore();
 
   useEffect(() => {
-    checkSession();
-  }, []);
+    void refresh();
+  }, [refresh]);
 
   const handleLogout = async () => {
     await logout();
@@ -30,33 +30,36 @@ function RootLayout() {
           </Link>
 
           <nav className="space-x-4">
-            {!isLoading ? (
-              isAuthenticated ? (
-                <>
-                  <Link to="/" className="text-gray-600 hover:text-indigo-600 font-medium">
-                    Dashboard
-                  </Link>
-                  <button onClick={handleLogout} className="text-gray-600 hover:text-red-600 font-medium">
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/auth/login" className="text-gray-600 hover:text-indigo-600 font-medium">
-                    Sign In
-                  </Link>
-                  <Link to="/auth/register" className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition">
-                    Sign Up
-                  </Link>
-                </>
-              )
+            {status === "authenticated" ? (
+              <>
+                <Link to="/" className="text-gray-600 hover:text-indigo-600 font-medium">
+                  Dashboard
+                </Link>
+                <Link to="/auctions/create" className="text-gray-600 hover:text-indigo-600 font-medium">
+                  Create Auction
+                </Link>
+                <button onClick={handleLogout} className="text-gray-600 hover:text-red-600 font-medium cursor-pointer">
+                  Sign Out
+                </button>
+              </>
+            ) : null}
+
+            {status === "unauthenticated" ? (
+              <>
+                <Link to="/auth/login" className="text-gray-600 hover:text-indigo-600 font-medium">
+                  Sign In
+                </Link>
+                <Link to="/auth/register" className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition">
+                  Sign Up
+                </Link>
+              </>
             ) : null}
           </nav>
         </div>
       </header>
 
       <main className="grow p-4 max-w-7xl mx-auto w-full">
-        {isLoading ? (
+        {status === "unknown" ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-pulse text-gray-400 font-medium">Loading session...</div>
           </div>

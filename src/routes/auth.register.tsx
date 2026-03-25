@@ -3,7 +3,7 @@ import {useState} from "react";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {type AuthInput, authSchema} from "../lib/schemas.ts";
-import { signUp } from "supertokens-web-js/recipe/emailpassword";
+import { signUp } from "../lib/auth";
 
 export const Route = createFileRoute('/auth/register')({
   component: RegisterPage,
