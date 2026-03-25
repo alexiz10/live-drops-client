@@ -1,27 +1,12 @@
 import {createFileRoute, Link} from '@tanstack/react-router'
-import {useQuery} from "@tanstack/react-query";
-import {api} from "../lib/api.ts";
+import {useAuctionList} from "../hooks/use-auctions.ts";
 
 export const Route = createFileRoute('/')({
   component: Dashboard,
 })
 
-interface AuctionListItem {
-  id: string;
-  title: string;
-  description: string;
-  current_price: string | number;
-  end_time: string;
-}
-
 function Dashboard() {
-  const { data: auctions, isLoading, isError } = useQuery<AuctionListItem[]>({
-    queryKey: ['auctions', 'list'],
-    queryFn: async () => {
-      const response = await api.get('/auctions/');
-      return response.data;
-    }
-  })
+  const { data: auctions, isLoading, isError } = useAuctionList();
 
   if (isLoading) {
     return (

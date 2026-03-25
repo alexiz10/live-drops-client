@@ -1,11 +1,10 @@
 import React from "react";
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from "react";
-import {useMutation, useQuery} from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useAuctionStore } from "../lib/ws-store";
 import { useAuthStore } from "../lib/store";
-import { api } from "../lib/api";
+import {useAuctionDetails, usePlaceBid} from "../hooks/use-auctions.ts";
 
 export const Route = createFileRoute('/auctions/$auctionId')({
   component: LiveAuctionRoom,
@@ -16,6 +15,8 @@ function LiveAuctionRoom() {
   const auth = useAuthStore();
   const {
     currentPrice: wsCurrentPrice,
+    highestBidderId: wsHighestBidderId,
+    highestBidderEmail: wsHighestBidderEmail,
     timeRemaining,
     isEnded,
     isConnected,
@@ -26,34 +27,13 @@ function LiveAuctionRoom() {
   const [bidAmount, setBidAmount] = useState<string>("")
   const [bidError, setBidError] = useState<string | null>(null);
 
-  const { data: auctionData, isLoading: isAuctionLoading, isError } = useQuery({
-    queryKey: ['auction', auctionId],
-    queryFn: async () => {
-      const response = await api.get(`/auctions/${auctionId}`);
-      return response.data;
-    }
-  })
+  const { data: auctionData, isLoading: isAuctionLoading, isError } = useAuctionDetails(auctionId);
+  const placeBidMutation = usePlaceBid(auctionId);
 
   useEffect(() => {
     connect(auctionId);
     return () => disconnect();
   }, [auctionId, connect, disconnect])
-
-  const placeBidMutation = useMutation({
-    mutationFn: async (amount: string) => {
-      const response = await api.post(`/auctions/${auctionId}/bids`, {
-        amount: parseFloat(amount),
-      })
-      return response.data;
-    },
-    onSuccess: () => {
-      setBidAmount("");
-      setBidError(null);
-    },
-    onError: (error: any) => {
-      setBidError(error.response?.data?.detail || "Failed to place bid");
-    }
-  })
 
   const handleBidSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -62,7 +42,15 @@ function LiveAuctionRoom() {
       setBidError("Please enter a valid amount");
       return;
     }
-    placeBidMutation.mutate(bidAmount);
+    placeBidMutation.mutate(bidAmount, {
+      onSuccess: () => {
+        setBidAmount("");
+        setBidError(null);
+      },
+      onError: (error: any) => {
+        setBidError(error.response?.data?.detail || "Failed to place bid");
+      }
+    })
   }
 
   const formatTime = (seconds: number | null) => {
@@ -118,10 +106,56 @@ function LiveAuctionRoom() {
   }
 
   const displayPrice = wsCurrentPrice || auctionData?.current_price || '---.--';
-
   const displayTime = timeRemaining !== null ? timeRemaining : calculateInitialTime();
-
   const displayIsEnded = isEnded || displayTime <= 0;
+
+  const displayHighestBidderId = wsHighestBidderId || auctionData.highest_bidder_id;
+  const displayHighestBidderEmail = wsHighestBidderEmail || auctionData.highest_bidder_email || 'No bids yet';
+
+  const currentUserId = auth.status === 'authenticated' ? auth.userId : null;
+  const hasBids = displayHighestBidderId !== null;
+  const isWinning = currentUserId && currentUserId === displayHighestBidderId;
+  const isLosing = currentUserId && hasBids && currentUserId !== displayHighestBidderId;
+
+  const renderStatusBanner = () => {
+    if (displayIsEnded) {
+      if (isWinning) {
+        return (
+          <div className="bg-yellow-100 text-yellow-800 p-4 rounded-xl border border-yellow-200 font-bold text-center mb-6">
+            🎉 Congratulations! You won this auction!
+          </div>
+        );
+      }
+      if (hasBids && isLosing) {
+        return (
+          <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 font-bold text-center mb-6">
+            Auction ended. You did not win this item.
+          </div>
+        );
+      }
+      return (
+        <div className="bg-gray-100 text-gray-600 p-4 rounded-xl border border-gray-200 font-bold text-center mb-6">
+          Auction ended.
+        </div>
+      );
+    }
+
+    if (isWinning) {
+      return (
+        <div className="bg-green-100 text-green-800 p-4 rounded-xl border border-green-200 font-bold text-center mb-6">
+          You are currently the highest bidder!
+        </div>
+      );
+    }
+    if (isLosing) {
+      return (
+        <div className="bg-orange-50 text-orange-700 p-4 rounded-xl border border-orange-200 font-bold text-center mb-6">
+          You have been outbid!
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="max-w-4xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -155,6 +189,19 @@ function LiveAuctionRoom() {
             >
               ${displayPrice}
             </motion.p>
+
+            {displayHighestBidderEmail ? (
+              <div className="inline-flex items-center space-x-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                <div className="size-2 rounded-full bg-indigo-500 animate-pulse" />
+                <p className="text-sm font-medium text-indigo-700">
+                  Winning: {displayHighestBidderEmail}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm font-medium text-gray-500">
+                No bids yet. Be the first!
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -162,11 +209,9 @@ function LiveAuctionRoom() {
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Place a Bid</h2>
 
-        {displayIsEnded ? (
-          <div className="bg-red-50 text-red-700 p-4 rounded-xl font-medium text-center border border-red-100">
-            Auction has ended!
-          </div>
-        ) : auth.status === "authenticated" ? (
+        {renderStatusBanner()}
+
+        {displayIsEnded ? null : auth.status === "authenticated" ? (
           <form onSubmit={handleBidSubmit} className="space-y-4">
             <div>
               <div className="relative">

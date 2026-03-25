@@ -2,9 +2,8 @@ import {createFileRoute, redirect, useNavigate} from '@tanstack/react-router'
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {type AuctionInput, auctionSchema} from "../lib/schemas.ts";
-import {useMutation} from "@tanstack/react-query";
-import {api} from "../lib/api.ts";
 import {getAuthSnapshot} from "../lib/auth.ts";
+import {useCreateAuction} from "../hooks/use-auctions.ts";
 
 export const Route = createFileRoute('/auctions/create')({
   beforeLoad: async () => {
@@ -28,22 +27,14 @@ function CreateAuctionPage() {
     resolver: zodResolver(auctionSchema)
   });
 
-  const createAuctionMutation = useMutation({
-    mutationFn: async (data: AuctionInput) => {
-      const payload = {
-        ...data,
-        end_time: new Date(data.end_time).toISOString(),
-      }
-      const response = await api.post("/auctions/", payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      void navigate({ to: "/" });
-    }
-  })
+  const createAuctionMutation = useCreateAuction();
 
   const onSubmit = (data: AuctionInput) => {
-    createAuctionMutation.mutate(data);
+    createAuctionMutation.mutate(data, {
+      onSuccess: () => {
+        void navigate({ to: "/" });
+      }
+    });
   }
 
   const inputClass = "w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400";
