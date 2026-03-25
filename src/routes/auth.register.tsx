@@ -27,14 +27,8 @@ function RegisterPage() {
     setGeneralError(null);
 
     try {
-      const response = await signUp({
-        formFields: [
-          { id: "email", value: data.email },
-          { id: "password", value: data.password },
-        ]
-      });
+      const response = await signUp(data.email, data.password);
 
-      console.log(response);
       if (response.status === "OK") {
         void navigate({ to: "/" });
       } else if (response.status === "FIELD_ERROR") {

@@ -27,12 +27,7 @@ function LoginPage() {
     setGeneralError(null);
 
     try {
-      const response = await signIn({
-        formFields: [
-          { id: "email", value: data.email },
-          { id: "password", value: data.password }
-        ]
-      })
+      const response = await signIn(data.email, data.password)
 
       if (response.status === "OK") {
         void navigate({ to: "/" })
