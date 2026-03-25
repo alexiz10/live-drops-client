@@ -22,53 +22,55 @@ function RootLayout() {
   }
 
   return (
-    <div className="min-h-svh bg-gray-50 flex flex-col">
-      <header className="bg-white shadow-sm p-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="font-bold text-xl text-indigo-600">
-            Live Auction Platform
+    <div className="min-h-screen bg-white flex flex-col  font-sans text-zinc-900 selection:bg-emerald-200">
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+          <Link to="/" className="text-xl md:text-2xl font-black tracking-tighter text-zinc-900 hover:text-zinc-600 transition-colors">
+            LIVE<span className="text-emerald-500">DROPS</span>
           </Link>
 
-          <nav className="space-x-4">
-            {status === "authenticated" ? (
+          <nav className="flex items-center gap-2 md:gap-6">
+            {status === "unknown" ? null : status === "authenticated" ? (
               <>
-                <Link to="/" className="text-gray-600 hover:text-indigo-600 font-medium">
-                  Dashboard
+                <Link to="/" className="hidden md:block text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors">
+                  Marketplace
                 </Link>
-                <Link to="/auctions/create" className="text-gray-600 hover:text-indigo-600 font-medium">
-                  Create Auction
-                </Link>
-                <button onClick={handleLogout} className="text-gray-600 hover:text-red-600 font-medium cursor-pointer">
+                <button
+                  onClick={handleLogout}
+                  className="hidden md:block text-sm font-bold text-zinc-500 hover:text-red-500 transition-colors cursor-pointer">
                   Sign Out
                 </button>
+                <Link to="/auctions/create" className="bg-black text-white text-sm font-bold px-4 py-2 rounded-full hover:bg-zinc-800 active:scale-95 transition-all shadow-md shadow-black/10">
+                  + Sell
+                </Link>
               </>
-            ) : null}
-
-            {status === "unauthenticated" ? (
+            ) : (
               <>
-                <Link to="/auth/login" className="text-gray-600 hover:text-indigo-600 font-medium">
+                <Link to="/auth/login" className="text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors px-2">
                   Sign In
                 </Link>
-                <Link to="/auth/register" className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition">
+                <Link to="/auth/register" className="bg-black text-white text-sm font-bold px-4 py-2 rounded-full hover:bg-zinc-800 active:scale-95 transition-all shadow-md shadow-black/10">
                   Sign Up
                 </Link>
               </>
-            ) : null}
+            )}
           </nav>
         </div>
       </header>
 
-      <main className="grow p-4 max-w-7xl mx-auto w-full">
+      <main className="grow w-full">
         {status === "unknown" ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-pulse text-gray-400 font-medium">Loading session...</div>
+          <div className="flex justify-center items-center h-[70vh]">
+            <div className="animate-pulse text-zinc-400 font-bold tracking-widest uppercase text-sm">
+              Authenticating...
+            </div>
           </div>
         ) : (
           <Outlet />
         )}
       </main>
 
-      <TanStackRouterDevtools />
+      <TanStackRouterDevtools position="bottom-right" />
     </div>
   )
 }

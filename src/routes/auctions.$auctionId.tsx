@@ -108,7 +108,6 @@ function LiveAuctionRoom() {
   const displayPrice = wsCurrentPrice || auctionData?.current_price || '---.--';
   const displayTime = timeRemaining !== null ? timeRemaining : calculateInitialTime();
   const displayIsEnded = isEnded || displayTime <= 0;
-
   const displayHighestBidderId = wsHighestBidderId || auctionData.highest_bidder_id;
   const displayHighestBidderEmail = wsHighestBidderEmail || auctionData.highest_bidder_email || 'No bids yet';
 
@@ -117,134 +116,126 @@ function LiveAuctionRoom() {
   const isWinning = currentUserId && currentUserId === displayHighestBidderId;
   const isLosing = currentUserId && hasBids && currentUserId !== displayHighestBidderId;
 
-  const renderStatusBanner = () => {
-    if (displayIsEnded) {
-      if (isWinning) {
-        return (
-          <div className="bg-yellow-100 text-yellow-800 p-4 rounded-xl border border-yellow-200 font-bold text-center mb-6">
-            🎉 Congratulations! You won this auction!
-          </div>
-        );
-      }
-      if (hasBids && isLosing) {
-        return (
-          <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 font-bold text-center mb-6">
-            Auction ended. You did not win this item.
-          </div>
-        );
-      }
-      return (
-        <div className="bg-gray-100 text-gray-600 p-4 rounded-xl border border-gray-200 font-bold text-center mb-6">
-          Auction ended.
-        </div>
-      );
-    }
+  const heroImage = "https://images.unsplash.com/photo-1584916201218-f4242ceb4809?q=80&w=2000&auto=format&fit=crop";
 
-    if (isWinning) {
-      return (
-        <div className="bg-green-100 text-green-800 p-4 rounded-xl border border-green-200 font-bold text-center mb-6">
-          You are currently the highest bidder!
+  const renderBiddingTerminal = () => (
+    <div className="flex flex-col gap-4">
+      {displayIsEnded ? (
+        <div className={`p-4 rounded-xl text-center font-bold text-sm ${isWinning ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-zinc-100 text-zinc-500'}`}>
+          {isWinning ? '🎉 You won this auction!' : 'Auction Ended'}
         </div>
-      );
-    }
-    if (isLosing) {
-      return (
-        <div className="bg-orange-50 text-orange-700 p-4 rounded-xl border border-orange-200 font-bold text-center mb-6">
+      ) : isWinning ? (
+        <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-center font-bold text-sm border border-emerald-200">
+          You are the highest bidder
+        </div>
+      ) : isLosing ? (
+        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-center font-bold text-sm border border-red-200">
           You have been outbid!
         </div>
-      );
-    }
-    return null;
-  }
+      ) : null}
+
+      {displayIsEnded ? null : auth.status === "authenticated" ? (
+        <form onSubmit={handleBidSubmit} noValidate className="flex flex-col gap-3">
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-lg">$</span>
+            <input
+              type="number"
+              step="0.01"
+              value={bidAmount}
+              onChange={e => setBidAmount(e.target.value)}
+              className="w-full pl-8 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-xl font-black text-zinc-900 transition-all outline-none"
+              placeholder="0.00"
+              disabled={placeBidMutation.isPending}
+            />
+          </div>
+          {bidError ? <p className="text-red-500 text-sm font-medium px-2">{bidError}</p> : null}
+          <button
+            type="submit"
+            disabled={placeBidMutation.isPending}
+            className="w-full bg-black text-white p-4 rounded-2xl font-bold text-lg hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 transition-all shadow-xl  shadow-black/10"
+          >
+            {placeBidMutation.isPending ? "Processing..." : "Place Bid"}
+          </button>
+        </form>
+      ) : (
+        <div className="p-4 bg-zinc-100 text-zinc-500 rounded-2xl text-center font-medium text-sm">
+          Please sign in to place a bid.
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="max-w-4xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-      <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-        <div className="flex justify-between items-start mb-4">
-          <h1 className="text-3xl font-extrabold text-gray-900">{auctionData.title}</h1>
-          <div className={`px-3 py-1 rounded-full text-sm font-bold ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {isConnected ? '● Live' : '○ Disconnected'}
+    <div className="bg-white min-h-[calc(100vh-73px)] pb-32 md:pb-12">
+      <div className="max-w-7xl mx-auto md:px-6 md:py-8 flex flex-col md:flex-row gap-8 lg:gap-12">
+        <div className="w-full md:w-[60%] lg:w-[65%] flex flex-col gap-6">
+          <div className="w-full aspect-square md:aspect-4/3 bg-zinc-100 md:rounded-4xl overflow-hidden relative group">
+            <img src={heroImage} alt={auctionData.title} className="size-full object-cover" />
+
+            <div className="absolute top-4 left-4 flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm">
+              <div className={`size-2 rounded-full ${isConnected && !displayIsEnded ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
+              <span className="text-xs font-bold text-zinc-900 tracking-wide uppercase">
+                {displayIsEnded ? 'Ended' : isConnected ? 'Live' : 'Connecting'}
+              </span>
+            </div>
+          </div>
+
+          <div className="px-5 md:px-0">
+            <h1 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-tight leading-[1.1] mb-6">
+              {auctionData.title}
+            </h1>
+
+            <div className="prose prose-zinc max-w-none">
+              <p className="text-zinc-600 text-lg leading-relaxed whitespace-pre-wrap">
+                {auctionData.description}
+              </p>
+            </div>
           </div>
         </div>
-        <p className="text-gray-600 mb-8">
-          {auctionData.description}
-        </p>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-            <p className="text-sm font-medium text-gray-500 mb-1">Time Remaining</p>
-            <p className={`text-4xl font-mono font-bold ${displayTime && displayTime <= 60 ? 'text-red-600' : 'text-gray-900'}`}>
-              {formatTime(displayTime)}
-            </p>
-          </div>
+        <div className="w-full md:w-[40%] lg:w-[35%] px-5 md:px-0">
+          <div className="md:sticky md:top-24 flex flex-col gap-6">
+            <div className="bg-white md:bg-zinc-50 md:border border-zinc-200 rounded-4xl md:p-8 flex flex-col gap-6">
+              <div>
+                <p className="text-zinc-500 font-semibold text-sm uppercase tracking-wider mb-2">Current Bid</p>
+                <motion.div
+                  key={displayPrice}
+                  initial={{ scale: 1.05, color: '#10b981' }}
+                  animate={{ scale: 1, color: '#09090b' }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  className="text-5xl lg:text-6xl font-black tracking-tighter"
+                >
+                  ${Number(displayPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </motion.div>
 
-          <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 overflow-hidden">
-            <p className="text-sm font-medium text-gray-500 mb-1">Current Price</p>
-            <motion.p
-              key={displayPrice}
-              initial={{ scale: 1.1, color: "#16a34a" }}
-              animate={{ scale: 1, color: "#111827" }}
-              transition={{ duration: 0.5 }}
-              className="text-4xl font-mono font-bold text-gray-900"
-            >
-              ${displayPrice}
-            </motion.p>
-
-            {displayHighestBidderEmail ? (
-              <div className="inline-flex items-center space-x-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
-                <div className="size-2 rounded-full bg-indigo-500 animate-pulse" />
-                <p className="text-sm font-medium text-indigo-700">
-                  Winning: {displayHighestBidderEmail}
-                </p>
+                {displayHighestBidderEmail && !displayIsEnded ? (
+                  <div className="mt-3 inline-flex items-center gap-2 bg-zinc-100 px-3 py-1.5 rounded-full">
+                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Highest Bidder</span>
+                    <span className="text-xs font-bold text-zinc-900">{displayHighestBidderEmail}</span>
+                  </div>
+                ) : null}
               </div>
-            ) : (
-              <p className="text-sm font-medium text-gray-500">
-                No bids yet. Be the first!
-              </p>
-            )}
+
+              <div className="h-px w-full bg-zinc-200" />
+
+              <div>
+                <p className="text-zinc-500 font-semibold text-sm uppercase tracking-wider mb-2">Time Remaining</p>
+                <div className={`text-3xl font-bold tracking-tight ${displayTime && displayTime <= 60 && !displayIsEnded ? 'text-red-500 animate-pulse' : 'text-zinc-900'}`}>
+                  {formatTime(displayTime)}
+                </div>
+              </div>
+
+              <div className="hidden md:block mt-2">
+                {renderBiddingTerminal()}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Place a Bid</h2>
-
-        {renderStatusBanner()}
-
-        {displayIsEnded ? null : auth.status === "authenticated" ? (
-          <form onSubmit={handleBidSubmit} className="space-y-4">
-            <div>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={bidAmount}
-                  onChange={e => setBidAmount(e.target.value)}
-                  className="w-full pl-8 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 text-lg font-bold"
-                  placeholder="0.00"
-                  disabled={placeBidMutation.isPending}
-                />
-              </div>
-              {bidError ? (
-                <p className="text-red-600 text-sm mt-2">{bidError}</p>
-              ) : null}
-            </div>
-
-            <button
-              type="submit"
-              disabled={placeBidMutation.isPending}
-              className="w-full bg-indigo-600 cursor-pointer text-white p-4 rounded-xl font-bold text-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {placeBidMutation.isPending ? "Submitting..." : "Submit Bid"}
-            </button>
-          </form>
-        ) : (
-          <div className="bg-gray-50 text-gray-600 p-4 rounded-xl text-center border border-gray-100">
-            You must be signed in to bid.
-          </div>
-        )}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-zinc-200 p-4 pb-safe shadow-[0_-20px_40px_rgba(0,0,0,0.05)] z-50">
+        {renderBiddingTerminal()}
       </div>
     </div>
-  )
+  );
 }
