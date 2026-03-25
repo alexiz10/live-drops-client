@@ -3,8 +3,11 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
+import { initSuperTokens } from "./lib/supertokens";
 
 import './index.css'
+
+initSuperTokens();
 
 const router = createRouter({ routeTree });
 

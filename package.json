@@ -15,6 +15,7 @@
     "@tanstack/react-router-devtools": "^1.166.11",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "supertokens-web-js": "^0.16.0",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
