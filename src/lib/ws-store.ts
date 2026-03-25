@@ -21,7 +21,20 @@ export const useAuctionStore = create<AuctionState>(set => ({
   isConnected: false,
 
   connect: (auctionId: string) => {
-    if (ws?.readyState === WebSocket.OPEN) return;
+    if (ws) {
+      ws.onmessage = null;
+      ws.onclose = null;
+      ws.close()
+      ws = null;
+    }
+
+    set({
+      currentPrice: null,
+      highestBidderId: null,
+      timeRemaining: null,
+      isEnded: false,
+      isConnected: false,
+    });
 
     ws = new WebSocket(`ws://localhost:8000/api/v1/auctions/${auctionId}/ws`);
 
@@ -41,7 +54,10 @@ export const useAuctionStore = create<AuctionState>(set => ({
             })
             break;
           case "time_update":
-            set({ timeRemaining: data.time_remaining });
+            set({
+              timeRemaining: data.time_remaining,
+              isEnded: data.time_remaining <= 0
+            });
             break;
           case "auction_ended":
             set({ isEnded: true, timeRemaining: 0 })
@@ -60,6 +76,8 @@ export const useAuctionStore = create<AuctionState>(set => ({
 
   disconnect: () => {
     if (ws) {
+      ws.onmessage = null;
+      ws.onclose = null;
       ws.close();
       ws = null;
     }

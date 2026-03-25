@@ -94,8 +94,6 @@ function LiveAuctionRoom() {
     return `${mStr}:${sStr}`;
   }
 
-  const displayPrice = wsCurrentPrice || auctionData?.current_price || '---.--';
-
   if (isAuctionLoading) {
     return (
       <div className="max-w-4xl mx-auto mt-8 p-8 flex justify-center">
@@ -111,6 +109,19 @@ function LiveAuctionRoom() {
       </div>
     );
   }
+
+  const calculateInitialTime = () => {
+    const end = new Date(auctionData.end_time).getTime();
+    const now = Date.now();
+    const remainingSeconds = Math.floor((end - now) / 1000);
+    return remainingSeconds > 0 ? remainingSeconds : 0;
+  }
+
+  const displayPrice = wsCurrentPrice || auctionData?.current_price || '---.--';
+
+  const displayTime = timeRemaining !== null ? timeRemaining : calculateInitialTime();
+
+  const displayIsEnded = isEnded || displayTime <= 0;
 
   return (
     <div className="max-w-4xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -128,8 +139,8 @@ function LiveAuctionRoom() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
             <p className="text-sm font-medium text-gray-500 mb-1">Time Remaining</p>
-            <p className={`text-4xl font-mono font-bold ${timeRemaining && timeRemaining <= 60 ? 'text-red-600' : 'text-gray-900'}`}>
-              {formatTime(timeRemaining)}
+            <p className={`text-4xl font-mono font-bold ${displayTime && displayTime <= 60 ? 'text-red-600' : 'text-gray-900'}`}>
+              {formatTime(displayTime)}
             </p>
           </div>
 
@@ -151,7 +162,7 @@ function LiveAuctionRoom() {
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Place a Bid</h2>
 
-        {isEnded ? (
+        {displayIsEnded ? (
           <div className="bg-red-50 text-red-700 p-4 rounded-xl font-medium text-center border border-red-100">
             Auction has ended!
           </div>
