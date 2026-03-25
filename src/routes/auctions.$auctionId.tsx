@@ -1,7 +1,7 @@
 import React from "react";
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import {useMutation, useQuery} from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { useAuctionStore } from "../lib/ws-store";
 import { useAuthStore } from "../lib/store";
@@ -13,10 +13,9 @@ export const Route = createFileRoute('/auctions/$auctionId')({
 
 function LiveAuctionRoom() {
   const { auctionId } = Route.useParams();
-
   const auth = useAuthStore();
   const {
-    currentPrice,
+    currentPrice: wsCurrentPrice,
     timeRemaining,
     isEnded,
     isConnected,
@@ -26,6 +25,14 @@ function LiveAuctionRoom() {
 
   const [bidAmount, setBidAmount] = useState<string>("")
   const [bidError, setBidError] = useState<string | null>(null);
+
+  const { data: auctionData, isLoading: isAuctionLoading, isError } = useQuery({
+    queryKey: ['auction', auctionId],
+    queryFn: async () => {
+      const response = await api.get(`/auctions/${auctionId}`);
+      return response.data;
+    }
+  })
 
   useEffect(() => {
     connect(auctionId);
@@ -87,17 +94,35 @@ function LiveAuctionRoom() {
     return `${mStr}:${sStr}`;
   }
 
+  const displayPrice = wsCurrentPrice || auctionData?.current_price || '---.--';
+
+  if (isAuctionLoading) {
+    return (
+      <div className="max-w-4xl mx-auto mt-8 p-8 flex justify-center">
+        <div className="animate-pulse text-xl text-gray-500 font-medium">Loading auction details...</div>
+      </div>
+    );
+  }
+
+  if (isError || !auctionData) {
+    return (
+      <div className="max-w-4xl mx-auto mt-8 p-8 bg-red-50 text-red-700 rounded-xl text-center">
+        Auction not found or failed to load.
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
       <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex justify-between items-start mb-4">
-          <h1 className="text-3xl font-extrabold text-gray-900">Live Auction Item</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900">{auctionData.title}</h1>
           <div className={`px-3 py-1 rounded-full text-sm font-bold ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
             {isConnected ? '● Live' : '○ Disconnected'}
           </div>
         </div>
         <p className="text-gray-600 mb-8">
-          This is where the auction description goes. Since we didn't build a GET endpoint for the auction details yet, we are focusing on the real-time websocket data!
+          {auctionData.description}
         </p>
 
         <div className="grid grid-cols-2 gap-4">
@@ -111,13 +136,13 @@ function LiveAuctionRoom() {
           <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 overflow-hidden">
             <p className="text-sm font-medium text-gray-500 mb-1">Current Price</p>
             <motion.p
-              key={currentPrice}
+              key={displayPrice}
               initial={{ scale: 1.1, color: "#16a34a" }}
               animate={{ scale: 1, color: "#111827" }}
               transition={{ duration: 0.5 }}
               className="text-4xl font-mono font-bold text-gray-900"
             >
-              ${currentPrice || '---.--'}
+              ${displayPrice}
             </motion.p>
           </div>
         </div>
