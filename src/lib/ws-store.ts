@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import {env} from "./env.ts";
 
 interface AuctionState {
   currentPrice: string | null;
@@ -42,7 +43,7 @@ export const useAuctionStore = create<AuctionState>(set => ({
       liveBids: [],
     });
 
-    ws = new WebSocket(`ws://localhost:8000/api/v1/auctions/${auctionId}/ws`);
+    ws = new WebSocket(`${env.wsBaseUrl}/api/v1/auctions/${auctionId}/ws`);
 
     ws.onopen = () => {
       set({ isConnected: true });
