@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { useAuctionStore } from "../lib/ws-store";
 import { useAuthStore } from "../lib/store";
 import {useAuctionDetails, usePlaceBid} from "../hooks/use-auctions.ts";
+import {getDynamicImage} from "../lib/utils.ts";
 
 export const Route = createFileRoute('/auctions/$auctionId')({
   component: LiveAuctionRoom,
@@ -170,7 +171,7 @@ function LiveAuctionRoom() {
       <div className="max-w-7xl mx-auto md:px-6 md:py-8 flex flex-col md:flex-row gap-8 lg:gap-12">
         <div className="w-full md:w-[60%] lg:w-[65%] flex flex-col gap-6">
           <div className="w-full aspect-square md:aspect-4/3 bg-zinc-100 md:rounded-4xl overflow-hidden relative group">
-            <img src={heroImage} alt={auctionData.title} className="size-full object-cover" />
+            <img src={getDynamicImage(auctionData.id, auctionData.title)} alt={auctionData.title} className="size-full object-cover" />
 
             <div className="absolute top-4 left-4 flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm">
               <div className={`size-2 rounded-full ${isConnected && !displayIsEnded ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
