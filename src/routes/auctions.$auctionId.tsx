@@ -153,7 +153,7 @@ function LiveAuctionRoom() {
           <button
             type="submit"
             disabled={placeBidMutation.isPending}
-            className="w-full bg-black text-white p-4 rounded-2xl font-bold text-lg hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 transition-all shadow-xl  shadow-black/10"
+            className="w-full bg-black cursor-pointer text-white p-4 rounded-2xl font-bold text-lg hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl  shadow-black/10"
           >
             {placeBidMutation.isPending ? "Processing..." : "Place Bid"}
           </button>
@@ -167,7 +167,7 @@ function LiveAuctionRoom() {
   );
 
   return (
-    <div className="bg-white min-h-[calc(100vh-73px)] pb-32 md:pb-12">
+    <div className="bg-white min-h-[calc(100vh-73px)] pb-52 md:pb-12">
       <div className="max-w-7xl mx-auto md:px-6 md:py-8 flex flex-col md:flex-row gap-8 lg:gap-12">
         <div className="w-full md:w-[60%] lg:w-[65%] flex flex-col gap-6">
           <div className="w-full aspect-square md:aspect-4/3 bg-zinc-100 md:rounded-4xl overflow-hidden relative group">

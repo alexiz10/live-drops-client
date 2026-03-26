@@ -35,6 +35,11 @@ function RootLayout() {
                 <Link to="/" className="hidden md:block text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors">
                   Marketplace
                 </Link>
+                <Link
+                  to="/auctions/me"
+                  className="hidden md:block text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors">
+                  Dashboard
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="hidden md:block text-sm font-bold text-zinc-500 hover:text-red-500 transition-colors cursor-pointer">
