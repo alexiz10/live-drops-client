@@ -7,8 +7,6 @@ export const Route = createFileRoute('/')({
   component: Dashboard,
 })
 
-const placeholderImg = "https://images.unsplash.com/photo-1584916201218-f4242ceb4809?q=80&w=600&auto=format&fit=crop";
-
 function Dashboard() {
   const [status, setStatus] = useState<'active' | 'ended'>('active');
   const [page, setPage] = useState<number>(1);

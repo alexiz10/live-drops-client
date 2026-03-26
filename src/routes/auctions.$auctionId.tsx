@@ -117,8 +117,6 @@ function LiveAuctionRoom() {
   const isWinning = currentUserId && currentUserId === displayHighestBidderId;
   const isLosing = currentUserId && hasBids && currentUserId !== displayHighestBidderId;
 
-  const heroImage = "https://images.unsplash.com/photo-1584916201218-f4242ceb4809?q=80&w=2000&auto=format&fit=crop";
-
   const renderBiddingTerminal = () => (
     <div className="flex flex-col gap-4">
       {displayIsEnded ? (
