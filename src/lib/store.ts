@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import {type AuthSnapshot, getAuthSnapshot, signOut} from "./auth.ts";
+import { type AuthSnapshot, getAuthSnapshot, signOut } from "./auth";
 
 interface AuthState {
   status: "unknown" | "authenticated" | "unauthenticated";
@@ -18,12 +18,12 @@ export const useAuthStore = create<AuthState>(set => ({
       set({
         status: "unauthenticated",
         userId: undefined,
-      })
+      });
     } else {
       set({
         status: "authenticated",
         userId: snapshot.userId,
-      })
+      });
     }
 
     return snapshot;
@@ -35,6 +35,6 @@ export const useAuthStore = create<AuthState>(set => ({
     set({
       status: "unauthenticated",
       userId: undefined,
-    })
-  }
-}))
+    });
+  },
+}));

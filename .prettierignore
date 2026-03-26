@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+coverage/
+.tanstack/
+*.min.*
+package-lock.json
+routeTree.gen.ts

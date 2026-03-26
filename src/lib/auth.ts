@@ -6,7 +6,7 @@ export type AuthSnapshot =
   | {
       status: "authenticated";
       userId: string;
-  };
+    };
 
 export async function getAuthSnapshot(): Promise<AuthSnapshot> {
   const hasSession = await Session.doesSessionExist();
@@ -17,7 +17,7 @@ export async function getAuthSnapshot(): Promise<AuthSnapshot> {
   return {
     status: "authenticated",
     userId,
-  }
+  };
 }
 
 export async function signUp(email: string, password: string) {
@@ -25,17 +25,17 @@ export async function signUp(email: string, password: string) {
     formFields: [
       { id: "email", value: email },
       { id: "password", value: password },
-    ]
-  })
+    ],
+  });
 }
 
 export async function signIn(email: string, password: string) {
   return EmailPassword.signIn({
     formFields: [
       { id: "email", value: email },
-      { id: "password", value: password }
-    ]
-  })
+      { id: "password", value: password },
+    ],
+  });
 }
 
 export async function signOut() {

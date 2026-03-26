@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import {env} from "./env.ts";
+import { env } from "./env";
 
 interface AuctionState {
   currentPrice: string | null;
@@ -29,7 +29,7 @@ export const useAuctionStore = create<AuctionState>(set => ({
     if (ws) {
       ws.onmessage = null;
       ws.onclose = null;
-      ws.close()
+      ws.close();
       ws = null;
     }
 
@@ -59,20 +59,23 @@ export const useAuctionStore = create<AuctionState>(set => ({
               currentPrice: data.new_price,
               highestBidderId: data.bidder_id,
               highestBidderEmail: data.bidder_email,
-              liveBids: [...state.liveBids, {
-                amount: parseFloat(data.new_price),
-                time: new Date().toISOString(),
-              }]
+              liveBids: [
+                ...state.liveBids,
+                {
+                  amount: parseFloat(data.new_price),
+                  time: new Date().toISOString(),
+                },
+              ],
             }));
             break;
           case "time_update":
             set({
               timeRemaining: data.time_remaining,
-              isEnded: data.time_remaining <= 0
+              isEnded: data.time_remaining <= 0,
             });
             break;
           case "auction_ended":
-            set({ isEnded: true, timeRemaining: 0 })
+            set({ isEnded: true, timeRemaining: 0 });
             break;
         }
       } catch (error) {
@@ -83,7 +86,7 @@ export const useAuctionStore = create<AuctionState>(set => ({
     ws.onclose = () => {
       set({ isConnected: false });
       ws = null;
-    }
+    };
   },
 
   disconnect: () => {
@@ -102,6 +105,6 @@ export const useAuctionStore = create<AuctionState>(set => ({
       isEnded: false,
       isConnected: false,
       liveBids: [],
-    })
-  }
-}))
+    });
+  },
+}));

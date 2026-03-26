@@ -1,17 +1,18 @@
 import React from "react";
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { isAxiosError } from "axios";
 
 import { useAuctionStore } from "../lib/ws-store";
 import { useAuthStore } from "../lib/store";
-import {useAuctionDetails, usePlaceBid, useAuctionBids} from "../hooks/use-auctions";
-import {getDynamicImage} from "../lib/utils";
+import { useAuctionDetails, usePlaceBid, useAuctionBids } from "../hooks/use-auctions";
+import { getDynamicImage } from "../lib/utils";
 
-export const Route = createFileRoute('/auctions/$auctionId')({
+export const Route = createFileRoute("/auctions/$auctionId")({
   component: LiveAuctionRoom,
-})
+});
 
 function LiveAuctionRoom() {
   const { auctionId } = Route.useParams();
@@ -27,7 +28,8 @@ function LiveAuctionRoom() {
     disconnect,
   } = useAuctionStore();
 
-  const [bidAmount, setBidAmount] = useState<string>("")
+  const [now, setNow] = useState(() => Date.now());
+  const [bidAmount, setBidAmount] = useState<string>("");
   const [bidError, setBidError] = useState<string | null>(null);
   const [sessionParticipated, setSessionParticipated] = useState<boolean>(false);
 
@@ -36,9 +38,16 @@ function LiveAuctionRoom() {
   const placeBidMutation = usePlaceBid(auctionId);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     connect(auctionId);
     return () => disconnect();
-  }, [auctionId, connect, disconnect])
+  }, [auctionId, connect, disconnect]);
 
   const handleBidSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -48,7 +57,7 @@ function LiveAuctionRoom() {
       return;
     }
     placeBidMutation.mutate(bidAmount, {
-      onSuccess: (data) => {
+      onSuccess: data => {
         setBidAmount("");
         setBidError(null);
         setSessionParticipated(true);
@@ -57,15 +66,21 @@ function LiveAuctionRoom() {
           setBidError("You were immediately outbid by a proxy limit!");
         }
       },
-      onError: (error: any) => {
-        setBidError(error.response?.data?.detail || "Failed to place bid");
-      }
-    })
-  }
+      onError: (error: unknown) => {
+        if (isAxiosError(error)) {
+          setBidError(error.response?.data?.detail || "Failed to place bid");
+        } else if (error instanceof Error) {
+          setBidError(error.message);
+        } else {
+          setBidError("An unexpected error occurred");
+        }
+      },
+    });
+  };
 
   const formatTime = (seconds: number | null) => {
     if (seconds === null) return "--:--";
-    if (seconds <= 0) return '00:00';
+    if (seconds <= 0) return "00:00";
 
     const y = Math.floor(seconds / 31_536_000);
     const mo = Math.floor((seconds % 31_536_000) / 2_592_000);
@@ -82,42 +97,47 @@ function LiveAuctionRoom() {
     if (d > 0) parts.push(`${d}d`);
     if (h > 0) parts.push(`${h}h`);
 
-    const mStr = m.toString().padStart(2, '0');
-    const sStr = s.toString().padStart(2, '0');
+    const mStr = m.toString().padStart(2, "0");
+    const sStr = s.toString().padStart(2, "0");
 
     if (parts.length > 0) {
-      return `${parts.join(' ')} ${mStr}m ${sStr}s`;
+      return `${parts.join(" ")} ${mStr}m ${sStr}s`;
     }
 
     return `${mStr}:${sStr}`;
-  }
+  };
 
-  const combinedBids = [
-    ...(initialBids || []),
-    ...useAuctionStore(state => state.liveBids)
-  ].map(bid => ({
-    time: new Date(bid.created_at || bid.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    amount: Number(bid.amount)
-  }));
+  const combinedBids = [...(initialBids || []), ...useAuctionStore(state => state.liveBids)].map(
+    bid => ({
+      time: new Date(bid.created_at || bid.time).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      amount: Number(bid.amount),
+    }),
+  );
 
   if (combinedBids.length === 0 && auctionData) {
     combinedBids.push({
-      time: 'Start',
+      time: "Start",
       amount: Number(auctionData.starting_price),
-    })
+    });
   }
 
   if (isAuctionLoading) {
     return (
-      <div className="max-w-4xl mx-auto mt-8 p-8 flex justify-center">
-        <div className="animate-pulse text-xl text-gray-500 font-medium">Loading auction details...</div>
+      <div className="mx-auto mt-8 flex max-w-4xl justify-center p-8">
+        <div className="animate-pulse text-xl font-medium text-gray-500">
+          Loading auction details...
+        </div>
       </div>
     );
   }
 
   if (isError || !auctionData) {
     return (
-      <div className="max-w-4xl mx-auto mt-8 p-8 bg-red-50 text-red-700 rounded-xl text-center">
+      <div className="mx-auto mt-8 max-w-4xl rounded-xl bg-red-50 p-8 text-center text-red-700">
         Auction not found or failed to load.
       </div>
     );
@@ -125,19 +145,19 @@ function LiveAuctionRoom() {
 
   const calculateInitialTime = () => {
     const end = new Date(auctionData.end_time).getTime();
-    const now = Date.now();
     const remainingSeconds = Math.floor((end - now) / 1000);
     return remainingSeconds > 0 ? remainingSeconds : 0;
-  }
+  };
 
-  const displayPrice = wsCurrentPrice || auctionData?.current_price || '---.--';
+  const displayPrice = wsCurrentPrice || auctionData?.current_price || "---.--";
   const displayTime = timeRemaining !== null ? timeRemaining : calculateInitialTime();
   const displayIsEnded = isEnded || displayTime <= 0;
   const displayHighestBidderId = wsHighestBidderId || auctionData.highest_bidder_id;
-  const displayHighestBidderEmail = wsHighestBidderEmail || auctionData.highest_bidder_email || 'No bids yet';
+  const displayHighestBidderEmail =
+    wsHighestBidderEmail || auctionData.highest_bidder_email || "No bids yet";
   const displayHasParticipated = sessionParticipated || auctionData.user_has_participated || false;
 
-  const currentUserId = auth.status === 'authenticated' ? auth.userId : null;
+  const currentUserId = auth.status === "authenticated" ? auth.userId : null;
   const hasBids = displayHighestBidderId !== null;
   const isWinning = currentUserId && currentUserId === displayHighestBidderId;
   const isLosing = currentUserId && hasBids && currentUserId !== displayHighestBidderId;
@@ -145,19 +165,21 @@ function LiveAuctionRoom() {
   const renderBiddingTerminal = () => (
     <div className="flex flex-col gap-4">
       {displayIsEnded ? (
-        <div className={`p-4 rounded-xl text-center font-bold text-sm ${isWinning ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-zinc-100 text-zinc-500'}`}>
-          {isWinning ? '🎉 You won this auction!' : 'Auction Ended'}
+        <div
+          className={`rounded-xl p-4 text-center text-sm font-bold ${isWinning ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-zinc-100 text-zinc-500"}`}
+        >
+          {isWinning ? "🎉 You won this auction!" : "Auction Ended"}
         </div>
       ) : isWinning ? (
-        <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-center font-bold text-sm border border-emerald-200">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-sm font-bold text-emerald-700">
           You are the highest bidder
         </div>
       ) : isLosing && displayHasParticipated ? (
-        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-center font-bold text-sm border border-red-200">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-center text-sm font-bold text-red-600">
           You have been outbid!
         </div>
       ) : hasBids && !isWinning ? (
-        <div className="p-3 bg-zinc-100 text-zinc-600 rounded-xl text-center font-bold text-sm border border-zinc-200">
+        <div className="rounded-xl border border-zinc-200 bg-zinc-100 p-3 text-center text-sm font-bold text-zinc-600">
           Active Proxy War
         </div>
       ) : null}
@@ -165,13 +187,15 @@ function LiveAuctionRoom() {
       {displayIsEnded ? null : auth.status === "authenticated" ? (
         <form onSubmit={handleBidSubmit} noValidate className="flex flex-col gap-3">
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-lg">$</span>
+            <span className="absolute top-1/2 left-4 -translate-y-1/2 text-lg font-bold text-zinc-400">
+              $
+            </span>
             <input
               type="number"
               step="1.00"
               value={bidAmount}
               onChange={e => setBidAmount(e.target.value)}
-              className="w-full pl-8 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-xl font-black text-zinc-900 transition-all outline-none"
+              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 p-4 pl-8 text-xl font-black text-zinc-900 transition-all outline-none focus:border-black focus:bg-white focus:ring-2 focus:ring-black"
               placeholder="Your max limit..."
               disabled={placeBidMutation.isPending}
             />
@@ -179,22 +203,23 @@ function LiveAuctionRoom() {
 
           <div className="px-2">
             <p className="text-xs font-medium text-zinc-500">
-              Enter your absolute maximum budget. Out system will automatically bid the lowest amount possible to keep you in the lead.
+              Enter your absolute maximum budget. Out system will automatically bid the lowest
+              amount possible to keep you in the lead.
             </p>
           </div>
 
-          {bidError ? <p className="text-red-500 text-sm font-medium px-2">{bidError}</p> : null}
+          {bidError ? <p className="px-2 text-sm font-medium text-red-500">{bidError}</p> : null}
 
           <button
             type="submit"
             disabled={placeBidMutation.isPending}
-            className="w-full bg-black cursor-pointer text-white p-4 rounded-2xl font-bold text-lg hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl  shadow-black/10"
+            className="w-full cursor-pointer rounded-2xl bg-black p-4 text-lg font-bold text-white shadow-xl shadow-black/10 transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {placeBidMutation.isPending ? "Processing..." : "Set Max Bid"}
           </button>
         </form>
       ) : (
-        <div className="p-4 bg-zinc-100 text-zinc-500 rounded-2xl text-center font-medium text-sm">
+        <div className="rounded-2xl bg-zinc-100 p-4 text-center text-sm font-medium text-zinc-500">
           Please sign in to place a bid.
         </div>
       )}
@@ -202,52 +227,68 @@ function LiveAuctionRoom() {
   );
 
   return (
-    <div className="bg-white min-h-[calc(100vh-73px)] pb-72 md:pb-12">
-      <div className="max-w-7xl mx-auto md:px-6 md:py-8 flex flex-col md:flex-row gap-8 lg:gap-12">
-        <div className="w-full md:w-[60%] lg:w-[65%] flex flex-col gap-6">
-          <div className="w-full aspect-square md:aspect-4/3 bg-zinc-100 md:rounded-4xl overflow-hidden relative group">
-            <img src={getDynamicImage(auctionData.id, auctionData.title)} alt={auctionData.title} className="size-full object-cover" />
+    <div className="min-h-[calc(100vh-73px)] bg-white pb-72 md:pb-12">
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:px-6 md:py-8 lg:gap-12">
+        <div className="flex w-full flex-col gap-6 md:w-[60%] lg:w-[65%]">
+          <div className="group relative aspect-square w-full overflow-hidden bg-zinc-100 md:aspect-4/3 md:rounded-4xl">
+            <img
+              src={getDynamicImage(auctionData.id, auctionData.title)}
+              alt={auctionData.title}
+              className="size-full object-cover"
+            />
 
-            <div className="absolute top-4 left-4 flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm">
-              <div className={`size-2 rounded-full ${isConnected && !displayIsEnded ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
-              <span className="text-xs font-bold text-zinc-900 tracking-wide uppercase">
-                {displayIsEnded ? 'Ended' : isConnected ? 'Live' : 'Connecting'}
+            <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 shadow-sm backdrop-blur-md">
+              <div
+                className={`size-2 rounded-full ${isConnected && !displayIsEnded ? "animate-pulse bg-emerald-500" : "bg-zinc-400"}`}
+              />
+              <span className="text-xs font-bold tracking-wide text-zinc-900 uppercase">
+                {displayIsEnded ? "Ended" : isConnected ? "Live" : "Connecting"}
               </span>
             </div>
           </div>
 
           <div className="px-5 md:px-0">
-            <h1 className="text-3xl md:text-5xl font-black text-zinc-900 tracking-tight leading-[1.1] mb-6">
+            <h1 className="mb-6 text-3xl leading-[1.1] font-black tracking-tight text-zinc-900 md:text-5xl">
               {auctionData.title}
             </h1>
 
             <div className="prose prose-zinc max-w-none">
-              <p className="text-zinc-600 text-lg leading-relaxed whitespace-pre-wrap">
+              <p className="text-lg leading-relaxed whitespace-pre-wrap text-zinc-600">
                 {auctionData.description}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="w-full md:w-[40%] lg:w-[35%] px-5 md:px-0">
-          <div className="md:sticky md:top-24 flex flex-col gap-6">
-            <div className="bg-white md:bg-zinc-50 md:border border-zinc-200 rounded-4xl md:p-8 flex flex-col gap-6">
+        <div className="w-full px-5 md:w-[40%] md:px-0 lg:w-[35%]">
+          <div className="flex flex-col gap-6 md:sticky md:top-24">
+            <div className="flex flex-col gap-6 rounded-4xl border-zinc-200 bg-white md:border md:bg-zinc-50 md:p-8">
               <div>
-                <p className="text-zinc-500 font-semibold text-sm uppercase tracking-wider mb-2">Current Bid</p>
+                <p className="mb-2 text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                  Current Bid
+                </p>
                 <motion.div
                   key={displayPrice}
-                  initial={{ scale: 1.05, color: '#10b981' }}
-                  animate={{ scale: 1, color: '#09090b' }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className="text-5xl lg:text-6xl font-black tracking-tighter"
+                  initial={{ scale: 1.05, color: "#10b981" }}
+                  animate={{ scale: 1, color: "#09090b" }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="text-5xl font-black tracking-tighter lg:text-6xl"
                 >
-                  ${Number(displayPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  $
+                  {Number(displayPrice).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </motion.div>
 
                 {displayHighestBidderEmail && !displayIsEnded ? (
-                  <div className="mt-3 inline-flex items-center gap-2 bg-zinc-100 px-3 py-1.5 rounded-full">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Highest Bidder</span>
-                    <span className="text-xs font-bold text-zinc-900">{displayHighestBidderEmail}</span>
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5">
+                    <span className="text-xs font-bold tracking-wider text-zinc-500 uppercase">
+                      Highest Bidder
+                    </span>
+                    <span className="text-xs font-bold text-zinc-900">
+                      {displayHighestBidderEmail}
+                    </span>
                   </div>
                 ) : null}
               </div>
@@ -255,8 +296,10 @@ function LiveAuctionRoom() {
               <div className="h-px w-full bg-zinc-200" />
 
               <div>
-                <p className="text-zinc-500 font-semibold text-sm uppercase tracking-wider mb-4">Price History</p>
-                <div className="h-48 w-full -ml-4">
+                <p className="mb-4 text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                  Price History
+                </p>
+                <div className="-ml-4 h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={combinedBids}>
                       <defs>
@@ -265,17 +308,20 @@ function LiveAuctionRoom() {
                           <stop offset="95%" stopColor="10b981" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <XAxis
-                        dataKey="time"
-                        hide={true}
-                      />
-                      <YAxis
-                        domain={['dataMin', 'auto']}
-                        hide={true}
-                      />
+                      <XAxis dataKey="time" hide={true} />
+                      <YAxis domain={["dataMin", "auto"]} hide={true} />
                       <Tooltip
-                        contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }}
-                        formatter={(value: any) => [`$${Number(value || 0).toFixed(2)}`, 'Bid']}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "none",
+                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                        }}
+                        formatter={(
+                          value: number | string | readonly (number | string)[] | undefined,
+                        ) => {
+                          const numericValue = Array.isArray(value) ? value[0] : value;
+                          return [`$${Number(numericValue || 0).toFixed(2)}`, "Bid"];
+                        }}
                         labelStyle={{ color: "#71717a", fontWeight: "bold", marginBottom: "4px" }}
                       />
                       <Area
@@ -295,21 +341,23 @@ function LiveAuctionRoom() {
               <div className="h-px w-full bg-zinc-200" />
 
               <div>
-                <p className="text-zinc-500 font-semibold text-sm uppercase tracking-wider mb-2">Time Remaining</p>
-                <div className={`text-3xl font-bold tracking-tight ${displayTime && displayTime <= 60 && !displayIsEnded ? 'text-red-500 animate-pulse' : 'text-zinc-900'}`}>
+                <p className="mb-2 text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                  Time Remaining
+                </p>
+                <div
+                  className={`text-3xl font-bold tracking-tight ${displayTime && displayTime <= 60 && !displayIsEnded ? "animate-pulse text-red-500" : "text-zinc-900"}`}
+                >
                   {formatTime(displayTime)}
                 </div>
               </div>
 
-              <div className="hidden md:block mt-2">
-                {renderBiddingTerminal()}
-              </div>
+              <div className="mt-2 hidden md:block">{renderBiddingTerminal()}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-zinc-200 p-4 pb-safe shadow-[0_-20px_40px_rgba(0,0,0,0.05)] z-50">
+      <div className="pb-safe fixed right-0 bottom-0 left-0 z-50 border-t border-zinc-200 bg-white/80 p-4 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] backdrop-blur-xl md:hidden">
         {renderBiddingTerminal()}
       </div>
     </div>
