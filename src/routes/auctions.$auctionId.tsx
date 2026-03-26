@@ -2,10 +2,12 @@ import React from "react";
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
 import { useAuctionStore } from "../lib/ws-store";
 import { useAuthStore } from "../lib/store";
-import {useAuctionDetails, usePlaceBid} from "../hooks/use-auctions.ts";
-import {getDynamicImage} from "../lib/utils.ts";
+import {useAuctionDetails, usePlaceBid, useAuctionBids} from "../hooks/use-auctions";
+import {getDynamicImage} from "../lib/utils";
 
 export const Route = createFileRoute('/auctions/$auctionId')({
   component: LiveAuctionRoom,
@@ -30,6 +32,7 @@ function LiveAuctionRoom() {
   const [sessionParticipated, setSessionParticipated] = useState<boolean>(false);
 
   const { data: auctionData, isLoading: isAuctionLoading, isError } = useAuctionDetails(auctionId);
+  const { data: initialBids } = useAuctionBids(auctionId);
   const placeBidMutation = usePlaceBid(auctionId);
 
   useEffect(() => {
@@ -87,6 +90,21 @@ function LiveAuctionRoom() {
     }
 
     return `${mStr}:${sStr}`;
+  }
+
+  const combinedBids = [
+    ...(initialBids || []),
+    ...useAuctionStore(state => state.liveBids)
+  ].map(bid => ({
+    time: new Date(bid.created_at || bid.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    amount: Number(bid.amount)
+  }));
+
+  if (combinedBids.length === 0 && auctionData) {
+    combinedBids.push({
+      time: 'Start',
+      amount: Number(auctionData.starting_price),
+    })
   }
 
   if (isAuctionLoading) {
@@ -184,7 +202,7 @@ function LiveAuctionRoom() {
   );
 
   return (
-    <div className="bg-white min-h-[calc(100vh-73px)] pb-52 md:pb-12">
+    <div className="bg-white min-h-[calc(100vh-73px)] pb-72 md:pb-12">
       <div className="max-w-7xl mx-auto md:px-6 md:py-8 flex flex-col md:flex-row gap-8 lg:gap-12">
         <div className="w-full md:w-[60%] lg:w-[65%] flex flex-col gap-6">
           <div className="w-full aspect-square md:aspect-4/3 bg-zinc-100 md:rounded-4xl overflow-hidden relative group">
@@ -232,6 +250,46 @@ function LiveAuctionRoom() {
                     <span className="text-xs font-bold text-zinc-900">{displayHighestBidderEmail}</span>
                   </div>
                 ) : null}
+              </div>
+
+              <div className="h-px w-full bg-zinc-200" />
+
+              <div>
+                <p className="text-zinc-500 font-semibold text-sm uppercase tracking-wider mb-4">Price History</p>
+                <div className="h-48 w-full -ml-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={combinedBids}>
+                      <defs>
+                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="time"
+                        hide={true}
+                      />
+                      <YAxis
+                        domain={['dataMin', 'auto']}
+                        hide={true}
+                      />
+                      <Tooltip
+                        contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }}
+                        formatter={(value: any) => [`$${Number(value || 0).toFixed(2)}`, 'Bid']}
+                        labelStyle={{ color: "#71717a", fontWeight: "bold", marginBottom: "4px" }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#colorAmount)"
+                        isAnimationActive={true}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               <div className="h-px w-full bg-zinc-200" />

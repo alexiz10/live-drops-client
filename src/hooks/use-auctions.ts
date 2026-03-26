@@ -55,3 +55,13 @@ export const usePlaceBid = (auctionId: string) => {
     }
   })
 }
+
+export const useAuctionBids = (auctionId: string) => {
+  return useQuery({
+    queryKey: ['auctions', auctionId, 'bids'],
+    queryFn: async () => {
+      const response = await api.get(`/auctions/${auctionId}/bids`);
+      return response.data;
+    }
+  })
+}

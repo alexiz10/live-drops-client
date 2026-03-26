@@ -7,6 +7,7 @@ interface AuctionState {
   timeRemaining: number | null;
   isEnded: boolean;
   isConnected: boolean;
+  liveBids: { amount: number; time: string }[];
 
   connect: (auctionId: string) => void;
   disconnect: () => void;
@@ -21,6 +22,7 @@ export const useAuctionStore = create<AuctionState>(set => ({
   timeRemaining: null,
   isEnded: false,
   isConnected: false,
+  liveBids: [],
 
   connect: (auctionId: string) => {
     if (ws) {
@@ -37,6 +39,7 @@ export const useAuctionStore = create<AuctionState>(set => ({
       timeRemaining: null,
       isEnded: false,
       isConnected: false,
+      liveBids: [],
     });
 
     ws = new WebSocket(`ws://localhost:8000/api/v1/auctions/${auctionId}/ws`);
@@ -51,11 +54,15 @@ export const useAuctionStore = create<AuctionState>(set => ({
 
         switch (data.event) {
           case "new_highest_bid":
-            set({
+            set(state => ({
               currentPrice: data.new_price,
               highestBidderId: data.bidder_id,
               highestBidderEmail: data.bidder_email,
-            })
+              liveBids: [...state.liveBids, {
+                amount: parseFloat(data.new_price),
+                time: new Date().toISOString(),
+              }]
+            }));
             break;
           case "time_update":
             set({
@@ -93,6 +100,7 @@ export const useAuctionStore = create<AuctionState>(set => ({
       timeRemaining: null,
       isEnded: false,
       isConnected: false,
+      liveBids: [],
     })
   }
 }))
