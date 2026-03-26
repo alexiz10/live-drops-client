@@ -57,7 +57,7 @@ function MyListingsPage() {
                 setStatus('active');
                 setPage(1);
               }}
-              className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${status === "active" ? "bg-white text-black shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
+              className={`px-6 py-2 cursor-pointer rounded-lg font-bold text-sm transition-all ${status === "active" ? "bg-white text-black shadow-sm" : "text-zinc-500 hover:text-zinc-900"}`}
             >
               Active Listings
             </button>
@@ -66,7 +66,7 @@ function MyListingsPage() {
                 setStatus('ended');
                 setPage(1);
               }}
-              className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${status === 'ended' ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-6 py-2 cursor-pointer rounded-lg font-bold text-sm transition-all ${status === 'ended' ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
             >
               Ended Listings
             </button>

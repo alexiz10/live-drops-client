@@ -49,7 +49,7 @@ function Dashboard() {
                 setStatus('active');
                 setPage(1);
               }}
-              className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${status === 'active' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-6 py-2 rounded-lg cursor-pointer font-bold text-sm transition-all ${status === 'active' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
             >
               Live Now
             </button>
@@ -58,7 +58,7 @@ function Dashboard() {
                 setStatus('ended');
                 setPage(1);
               }}
-              className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${status === 'ended' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-6 py-2 rounded-lg cursor-pointer font-bold text-sm transition-all ${status === 'ended' ? 'bg-white text-black shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
             >
               Past Drops
             </button>

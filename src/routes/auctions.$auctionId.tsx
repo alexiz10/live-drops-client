@@ -27,6 +27,7 @@ function LiveAuctionRoom() {
 
   const [bidAmount, setBidAmount] = useState<string>("")
   const [bidError, setBidError] = useState<string | null>(null);
+  const [sessionParticipated, setSessionParticipated] = useState<boolean>(false);
 
   const { data: auctionData, isLoading: isAuctionLoading, isError } = useAuctionDetails(auctionId);
   const placeBidMutation = usePlaceBid(auctionId);
@@ -44,9 +45,14 @@ function LiveAuctionRoom() {
       return;
     }
     placeBidMutation.mutate(bidAmount, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setBidAmount("");
         setBidError(null);
+        setSessionParticipated(true);
+
+        if (data && data.is_winner === false) {
+          setBidError("You were immediately outbid by a proxy limit!");
+        }
       },
       onError: (error: any) => {
         setBidError(error.response?.data?.detail || "Failed to place bid");
@@ -111,6 +117,7 @@ function LiveAuctionRoom() {
   const displayIsEnded = isEnded || displayTime <= 0;
   const displayHighestBidderId = wsHighestBidderId || auctionData.highest_bidder_id;
   const displayHighestBidderEmail = wsHighestBidderEmail || auctionData.highest_bidder_email || 'No bids yet';
+  const displayHasParticipated = sessionParticipated || auctionData.user_has_participated || false;
 
   const currentUserId = auth.status === 'authenticated' ? auth.userId : null;
   const hasBids = displayHighestBidderId !== null;
@@ -127,9 +134,13 @@ function LiveAuctionRoom() {
         <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-center font-bold text-sm border border-emerald-200">
           You are the highest bidder
         </div>
-      ) : isLosing ? (
+      ) : isLosing && displayHasParticipated ? (
         <div className="p-3 bg-red-50 text-red-600 rounded-xl text-center font-bold text-sm border border-red-200">
           You have been outbid!
+        </div>
+      ) : hasBids && !isWinning ? (
+        <div className="p-3 bg-zinc-100 text-zinc-600 rounded-xl text-center font-bold text-sm border border-zinc-200">
+          Active Proxy War
         </div>
       ) : null}
 
@@ -139,21 +150,29 @@ function LiveAuctionRoom() {
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-lg">$</span>
             <input
               type="number"
-              step="0.01"
+              step="1.00"
               value={bidAmount}
               onChange={e => setBidAmount(e.target.value)}
               className="w-full pl-8 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black text-xl font-black text-zinc-900 transition-all outline-none"
-              placeholder="0.00"
+              placeholder="Your max limit..."
               disabled={placeBidMutation.isPending}
             />
           </div>
+
+          <div className="px-2">
+            <p className="text-xs font-medium text-zinc-500">
+              Enter your absolute maximum budget. Out system will automatically bid the lowest amount possible to keep you in the lead.
+            </p>
+          </div>
+
           {bidError ? <p className="text-red-500 text-sm font-medium px-2">{bidError}</p> : null}
+
           <button
             type="submit"
             disabled={placeBidMutation.isPending}
             className="w-full bg-black cursor-pointer text-white p-4 rounded-2xl font-bold text-lg hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl  shadow-black/10"
           >
-            {placeBidMutation.isPending ? "Processing..." : "Place Bid"}
+            {placeBidMutation.isPending ? "Processing..." : "Set Max Bid"}
           </button>
         </form>
       ) : (
