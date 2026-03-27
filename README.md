@@ -1,73 +1,49 @@
-# React + TypeScript + Vite
+# LiveDrops - Frontend Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+LiveDrops is a real-time auction and bidding platform. This repository contains the frontend client, built to handle live WebSocket streams, strict form variables, and secure session management.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+* Framework: React + Vite
+* Language: TypeScript
+* Routing: TanStack Router (File-based)
+* Styling: Tailwind CSS
+* Forms & Validation: React Hook Form + Zod
+* Data Visualization: Recharts
+* Authentication: SuperTokens (Web JS SDK)
+* Deployment: Vercel
 
-## React Compiler
+## Key Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* Real-Time Bidding Interface: Connects to the backend via WebSockets to render live bid updates and auction timers without client-side polling.
+* Enterprise Authentication: Integrated with SuperTokens for secure, HTTP-only cookie session management, fully compatible with mobile ITP (Intelligent Tracking Prevention) restrictions.
+* Strict Type Safety: End-to-end type safety. Zod securely coerces and validates form inputs before hitting the React Hook Form resolvers, ensuring no implicit 'any' types compromise the build.
+* Production-Grade Routing: Utilizes TanStack Router for type-safe navigation, paired with custom Vercel rewrite rules to cleanly handle Single Page Application (SPA) deep-linking.
 
-## Expanding the ESLint configuration
+## Local Development Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
+* Node.js (v18+)
+* npm
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Installation & Execution
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Install dependencies:
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Environment Configuration
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Create a `.env` file in the root directory based on `.env.example` and populate it with your local API and WebSocket URLs.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+3. Start the development server:
+```bash
+npm run dev
+```
+
+4. Code Formatting & Linting:
+```bash
+npm run format
+npm run lint:fix
 ```
