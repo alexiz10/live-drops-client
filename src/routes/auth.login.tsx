@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type AuthInput, authSchema } from "../lib/schemas";
 import { signIn } from "../lib/auth";
+import { useAuthStore } from "../lib/store";
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginPage,
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/auth/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { refresh } = useAuthStore();
   const [generalError, setGeneralError] = useState<string | null>(null);
 
   const {
@@ -30,6 +32,7 @@ function LoginPage() {
       const response = await signIn(data.email, data.password);
 
       if (response.status === "OK") {
+        await refresh();
         void navigate({ to: "/" });
       } else if (response.status === "WRONG_CREDENTIALS_ERROR") {
         setGeneralError("Invalid email or password");
