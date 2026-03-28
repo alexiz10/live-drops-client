@@ -115,16 +115,35 @@ function LiveAuctionRoom() {
     return `${mStr}:${sStr}`;
   };
 
-  const combinedBids = [...(initialBids || []), ...useAuctionStore(state => state.liveBids)].map(
-    bid => ({
-      time: new Date(bid.created_at || bid.time).toLocaleTimeString([], {
+  const allBids = [...(initialBids || []), ...useAuctionStore(state => state.liveBids)];
+
+  // Deduplicate by timestamp and amount to avoid showing the same bid twice
+  const uniqueBids = Array.from(
+    new Map(
+      allBids.map(bid => {
+        const timestamp = new Date(bid.created_at || bid.time).getTime();
+        const amount = Number(bid.amount);
+        // Use timestamp + amount as unique key
+        return [`${timestamp}-${amount}`, { timestamp, amount }];
+      }),
+    ).values(),
+  ).sort((a, b) => a.timestamp - b.timestamp);
+
+  const combinedBids = uniqueBids
+    .map(bid => ({
+      time: new Date(bid.timestamp).toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
       }),
-      amount: Number(bid.amount),
-    }),
-  );
+      amount: bid.amount,
+    }))
+    .filter((bid, index, array) => {
+      // Keep the first bid always
+      if (index === 0) return true;
+      // Only keep bids where the amount is different from the previous bid
+      return bid.amount !== array[index - 1].amount;
+    });
 
   if (combinedBids.length === 0 && auctionData) {
     combinedBids.push({
