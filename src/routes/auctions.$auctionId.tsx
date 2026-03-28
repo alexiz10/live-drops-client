@@ -245,7 +245,7 @@ function LiveAuctionRoom() {
 
           <div className="px-2">
             <p className="text-xs font-medium text-zinc-500">
-              Enter your absolute maximum budget. Out system will automatically bid the lowest
+              Enter your absolute maximum budget. Our system will automatically bid the lowest
               amount possible to keep you in the lead.
             </p>
           </div>
