@@ -51,14 +51,13 @@ function LiveAuctionRoom() {
     return () => disconnect();
   }, [auctionId, connect, disconnect]);
 
-  const handleBidSubmit = async (e: React.SubmitEvent) => {
-    e.preventDefault();
+  const handlePlaceBid = (amount: string) => {
     setBidError(null);
-    if (!bidAmount || isNaN(Number(bidAmount))) {
+    if (!amount || isNaN(Number(amount))) {
       setBidError("Please enter a valid amount");
       return;
     }
-    placeBidMutation.mutate(bidAmount, {
+    placeBidMutation.mutate(amount, {
       onSuccess: data => {
         setBidAmount("");
         setBidError(null);
@@ -80,6 +79,11 @@ function LiveAuctionRoom() {
         }
       },
     });
+  };
+
+  const handleBidSubmit = async (e: React.SubmitEvent) => {
+    e.preventDefault();
+    handlePlaceBid(bidAmount);
   };
 
   const formatTime = (seconds: number | null) => {
@@ -219,7 +223,8 @@ function LiveAuctionRoom() {
                 <button
                   key={amount}
                   type="button"
-                  onClick={() => setBidAmount(quickBidAmount.toString())}
+                  onClick={() => handlePlaceBid(quickBidAmount.toString())}
+                  disabled={placeBidMutation.isPending}
                   className="flex-1 cursor-pointer rounded-xl bg-zinc-100 py-2.5 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   ${quickBidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
