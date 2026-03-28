@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { type AuctionInput } from "../lib/schemas";
+import { type AuctionResponse } from "../lib/types";
 
 export const useAuctionList = (status: "active" | "ended", page: number) => {
   return useQuery({
@@ -23,7 +24,7 @@ export const useMyAuctions = (status: "active" | "ended", page: number) => {
 };
 
 export const useAuctionDetails = (auctionId: string) => {
-  return useQuery({
+  return useQuery<AuctionResponse>({
     queryKey: ["auctions", auctionId],
     queryFn: async () => {
       const response = await api.get(`/auctions/${auctionId}`);
