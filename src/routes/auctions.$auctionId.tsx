@@ -67,7 +67,7 @@ function LiveAuctionRoom() {
           setBidError("You were immediately outbid by a proxy limit!");
         }
 
-        queryClient.invalidateQueries({ queryKey: ["auctions", auctionId] });
+        void queryClient.invalidateQueries({ queryKey: ["auctions", auctionId] });
       },
       onError: (error: unknown) => {
         if (isAxiosError(error)) {
