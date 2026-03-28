@@ -130,13 +130,14 @@ function LiveAuctionRoom() {
   ).sort((a, b) => a.timestamp - b.timestamp);
 
   const combinedBids = uniqueBids
-    .map(bid => ({
+    .map((bid, index) => ({
       time: new Date(bid.timestamp).toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
       }),
       amount: bid.amount,
+      index, // Add unique index for each data point
     }))
     .filter((bid, index, array) => {
       // Keep the first bid always
@@ -149,6 +150,7 @@ function LiveAuctionRoom() {
     combinedBids.push({
       time: "Start",
       amount: Number(auctionData.starting_price),
+      index: 0,
     });
   }
 
@@ -406,16 +408,16 @@ function LiveAuctionRoom() {
                 <p className="mb-4 text-sm font-semibold tracking-wider text-zinc-500 uppercase">
                   Price History
                 </p>
-                <div className="-ml-4 h-48 w-full">
+                <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={combinedBids}>
+                    <AreaChart data={combinedBids} margin={{ left: 0, right: 0, top: 5, bottom: 5 }}>
                       <defs>
                         <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="10b981" stopOpacity={0} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="time" hide={true} />
+                      <XAxis dataKey="index" hide={true} />
                       <YAxis domain={["dataMin", "auto"]} hide={true} />
                       <Tooltip
                         contentStyle={{
@@ -429,6 +431,11 @@ function LiveAuctionRoom() {
                           const numericValue = Array.isArray(value) ? value[0] : value;
                           return [`$${Number(numericValue || 0).toFixed(2)}`, "Bid"];
                         }}
+                        labelFormatter={(label: unknown) => {
+                          const index = typeof label === "number" ? label : 0;
+                          const bid = combinedBids[index];
+                          return bid?.time || "";
+                        }}
                         labelStyle={{ color: "#71717a", fontWeight: "bold", marginBottom: "4px" }}
                       />
                       <Area
@@ -439,6 +446,7 @@ function LiveAuctionRoom() {
                         fillOpacity={1}
                         fill="url(#colorAmount)"
                         isAnimationActive={true}
+                        activeDot={{ r: 6 }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
