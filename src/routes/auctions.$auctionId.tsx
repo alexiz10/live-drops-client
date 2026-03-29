@@ -1,15 +1,15 @@
-import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuctionStore } from "../lib/ws-store";
 import { useAuthStore } from "../lib/store";
 import { useAuctionDetails, usePlaceBid, useAuctionBids } from "../hooks/use-auctions";
-import { getDynamicImage } from "../lib/utils";
+import { getDynamicImage, formatTime } from "../lib/utils";
+import { deduplicateAndFormatBids } from "../lib/bid-utils";
+import { PriceChart, BiddingTerminal } from "../components/auctions";
 
 export const Route = createFileRoute("/auctions/$auctionId")({
   component: LiveAuctionRoom,
@@ -81,94 +81,13 @@ function LiveAuctionRoom() {
     });
   };
 
-  const handleBidSubmit = async (e: React.SubmitEvent) => {
-    e.preventDefault();
-    handlePlaceBid(bidAmount);
-  };
 
-  const formatTime = (seconds: number | null) => {
-    if (seconds === null) return "--:--";
-    if (seconds <= 0) return "00:00";
 
-    const y = Math.floor(seconds / 31_536_000);
-    const mo = Math.floor((seconds % 31_536_000) / 2_592_000);
-    const w = Math.floor((seconds % 2_592_000) / 604_800);
-    const d = Math.floor((seconds % 604_800) / 86_400);
-    const h = Math.floor((seconds % 86_400) / 3_600);
-    const m = Math.floor((seconds % 3_600) / 60);
-    const s = Math.floor(seconds % 60);
-
-    const parts = [];
-    if (y > 0) parts.push(`${y}y`);
-    if (mo > 0) parts.push(`${mo}mo`);
-    if (w > 0) parts.push(`${w}w`);
-    if (d > 0) parts.push(`${d}d`);
-    if (h > 0) parts.push(`${h}h`);
-
-    const mStr = m.toString().padStart(2, "0");
-    const sStr = s.toString().padStart(2, "0");
-
-    if (parts.length > 0) {
-      return `${parts.join(" ")} ${mStr}m ${sStr}s`;
-    }
-
-    return `${mStr}:${sStr}`;
-  };
-
-  const getQuickBidIncrements = (basePrice: number, hasBids: boolean): number[] => {
-    if (!hasBids) {
-      // No bids yet, start from 0 increment
-      if (basePrice < 100) return [0, 1, 2];
-      if (basePrice < 1000) return [0, 10, 20];
-      if (basePrice < 10000) return [0, 100, 200];
-      return [0, 1000, 2000];
-    }
-
-    // There are bids, use standard increments
-    if (basePrice < 100) return [1, 2, 3];
-    if (basePrice < 1000) return [10, 20, 30];
-    if (basePrice < 10000) return [100, 200, 300];
-    return [1000, 2000, 3000];
-  };
-
-  const allBids = [...(initialBids || []), ...useAuctionStore(state => state.liveBids)];
-
-  // Deduplicate by timestamp and amount to avoid showing the same bid twice
-  const uniqueBids = Array.from(
-    new Map(
-      allBids.map(bid => {
-        const timestamp = new Date(bid.created_at || bid.time).getTime();
-        const amount = Number(bid.amount);
-        // Use timestamp + amount as unique key
-        return [`${timestamp}-${amount}`, { timestamp, amount }];
-      }),
-    ).values(),
-  ).sort((a, b) => a.timestamp - b.timestamp);
-
-  const combinedBids = uniqueBids
-    .map((bid, index) => ({
-      time: new Date(bid.timestamp).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-      amount: bid.amount,
-      index, // Add unique index for each data point
-    }))
-    .filter((bid, index, array) => {
-      // Keep the first bid always
-      if (index === 0) return true;
-      // Only keep bids where the amount is different from the previous bid
-      return bid.amount !== array[index - 1].amount;
-    });
-
-  if (combinedBids.length === 0 && auctionData) {
-    combinedBids.push({
-      time: "Start",
-      amount: Number(auctionData.starting_price),
-      index: 0,
-    });
-  }
+  const combinedBids = deduplicateAndFormatBids(
+    initialBids,
+    useAuctionStore(state => state.liveBids),
+    auctionData ? Number(auctionData.starting_price) : undefined,
+  );
 
   if (isAuctionLoading) {
     return (
@@ -208,111 +127,6 @@ function LiveAuctionRoom() {
   const isWinning = currentUserId && currentUserId === displayHighestBidderId;
   const isLosing = currentUserId && hasBids && currentUserId !== displayHighestBidderId;
 
-  const renderBiddingTerminal = () => (
-    <div className="flex flex-col gap-4">
-      {displayIsEnded ? (
-        <div
-          className={`rounded-xl p-4 text-center text-sm font-bold ${isWinning ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-zinc-100 text-zinc-500"}`}
-        >
-          {isWinning ? "🎉 You won this auction!" : "Auction Ended"}
-        </div>
-      ) : isWinning ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-sm font-bold text-emerald-700">
-          You are the highest bidder
-        </div>
-      ) : isLosing && displayHasParticipated ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-center text-sm font-bold text-red-600">
-          You have been outbid!
-        </div>
-      ) : hasBids && !isWinning ? (
-        <div className="rounded-xl border border-zinc-200 bg-zinc-100 p-3 text-center text-sm font-bold text-zinc-600">
-          Active Proxy War
-        </div>
-      ) : null}
-
-      {displayUserMaxBid && displayHasParticipated && isWinning ? (
-        <div className="rounded-xl border border-zinc-300 bg-zinc-50 p-3 text-center">
-          <p className="mb-1 text-xs font-semibold tracking-wider text-zinc-500 uppercase">
-            Your Max Bid
-          </p>
-          <p className="text-lg font-bold text-zinc-900">
-            $
-            {Number(displayUserMaxBid).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </p>
-        </div>
-      ) : null}
-
-      {displayIsEnded ? null : auth.status === "authenticated" ? (
-        <form onSubmit={handleBidSubmit} noValidate className="flex flex-col gap-3">
-          <div className="flex gap-2">
-            {(() => {
-              const basePrice =
-                isWinning && displayUserMaxBid
-                  ? Number(displayUserMaxBid)
-                  : isNaN(Number(displayPrice))
-                    ? 0
-                    : Number(displayPrice);
-              const increments = getQuickBidIncrements(basePrice, hasBids);
-
-              return increments.map(increment => {
-                const quickBidAmount = basePrice + increment;
-                return (
-                  <button
-                    key={increment}
-                    type="button"
-                    onClick={() => handlePlaceBid(quickBidAmount.toString())}
-                    disabled={placeBidMutation.isPending}
-                    className="flex-1 cursor-pointer rounded-xl bg-zinc-100 py-2.5 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    ${quickBidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </button>
-                );
-              });
-            })()}
-          </div>
-
-          <div className="relative">
-            <span className="absolute top-1/2 left-4 -translate-y-1/2 text-lg font-bold text-zinc-400">
-              $
-            </span>
-            <input
-              type="number"
-              step="1.00"
-              value={bidAmount}
-              onChange={e => setBidAmount(e.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 p-4 pl-8 text-xl font-black text-zinc-900 transition-all outline-none focus:border-black focus:bg-white focus:ring-2 focus:ring-black"
-              placeholder="Your max limit..."
-              disabled={placeBidMutation.isPending}
-            />
-          </div>
-
-          <div className="px-2">
-            <p className="text-xs font-medium text-zinc-500">
-              Enter your absolute maximum budget. Our system will automatically bid the lowest
-              amount possible to keep you in the lead.
-            </p>
-          </div>
-
-          {bidError ? <p className="px-2 text-sm font-medium text-red-500">{bidError}</p> : null}
-
-          <button
-            type="submit"
-            disabled={placeBidMutation.isPending || !bidAmount}
-            className="w-full cursor-pointer rounded-2xl bg-black p-4 text-lg font-bold text-white shadow-xl shadow-black/10 transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {placeBidMutation.isPending ? "Processing..." : "Set Max Bid"}
-          </button>
-        </form>
-      ) : (
-        <div className="rounded-2xl bg-zinc-100 p-4 text-center text-sm font-medium text-zinc-500">
-          Please sign in to place a bid.
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="min-h-[calc(100vh-73px)] bg-white pb-85 md:pb-12">
@@ -424,56 +238,29 @@ function LiveAuctionRoom() {
 
               <div className="hidden h-px w-full bg-zinc-200 md:block" />
 
-              <div>
-                <p className="mb-4 text-sm font-semibold tracking-wider text-zinc-500 uppercase">
-                  Price History
-                </p>
-                <div className="h-48 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={combinedBids} margin={{ left: 0, right: 0, top: 5, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="index" hide={true} />
-                      <YAxis domain={["dataMin", "auto"]} hide={true} />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: "12px",
-                          border: "none",
-                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                        }}
-                        formatter={(
-                          value: number | string | readonly (number | string)[] | undefined,
-                        ) => {
-                          const numericValue = Array.isArray(value) ? value[0] : value;
-                          return [`$${Number(numericValue || 0).toFixed(2)}`, "Bid"];
-                        }}
-                        labelFormatter={(label: unknown) => {
-                          const index = typeof label === "number" ? label : 0;
-                          const bid = combinedBids[index];
-                          return bid?.time || "";
-                        }}
-                        labelStyle={{ color: "#71717a", fontWeight: "bold", marginBottom: "4px" }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="amount"
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        fillOpacity={1}
-                        fill="url(#colorAmount)"
-                        isAnimationActive={true}
-                        activeDot={{ r: 6 }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+              <PriceChart data={combinedBids} />
 
-              <div className="mt-2 hidden md:block">{renderBiddingTerminal()}</div>
+              <div className="mt-2 hidden md:block">
+                <BiddingTerminal
+                  displayIsEnded={displayIsEnded}
+                  isWinning={!!isWinning}
+                  isLosing={!!isLosing}
+                  hasBids={hasBids}
+                  displayHasParticipated={displayHasParticipated}
+                  displayUserMaxBid={displayUserMaxBid}
+                  displayPrice={displayPrice}
+                  isAuthenticated={auth.status === "authenticated"}
+                  bidAmount={bidAmount}
+                  setBidAmount={setBidAmount}
+                  bidError={bidError}
+                  onPlaceBid={handlePlaceBid}
+                  onSubmit={e => {
+                    e.preventDefault();
+                    handlePlaceBid(bidAmount);
+                  }}
+                  isPending={placeBidMutation.isPending}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -492,7 +279,25 @@ function LiveAuctionRoom() {
             </span>
           </div>
         ) : null}
-        {renderBiddingTerminal()}
+        <BiddingTerminal
+          displayIsEnded={displayIsEnded}
+          isWinning={!!isWinning}
+          isLosing={!!isLosing}
+          hasBids={hasBids}
+          displayHasParticipated={displayHasParticipated}
+          displayUserMaxBid={displayUserMaxBid}
+          displayPrice={displayPrice}
+          isAuthenticated={auth.status === "authenticated"}
+          bidAmount={bidAmount}
+          setBidAmount={setBidAmount}
+          bidError={bidError}
+          onPlaceBid={handlePlaceBid}
+          onSubmit={e => {
+            e.preventDefault();
+            handlePlaceBid(bidAmount);
+          }}
+          isPending={placeBidMutation.isPending}
+        />
       </div>
     </div>
   );
