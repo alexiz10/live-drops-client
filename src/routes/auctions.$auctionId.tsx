@@ -6,10 +6,11 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuctionStore } from "../lib/ws-store";
 import { useAuthStore } from "../lib/store";
+import { useDrawerStore } from "../lib/drawer-store";
 import { useAuctionDetails, usePlaceBid, useAuctionBids } from "../hooks/use-auctions";
 import { getDynamicImage, formatTime } from "../lib/utils";
 import { deduplicateAndFormatBids } from "../lib/bid-utils";
-import { PriceChart, BiddingTerminal } from "../components/auctions";
+import { PriceChart, BiddingTerminal, MobileBiddingDrawer } from "../components/auctions";
 
 export const Route = createFileRoute("/auctions/$auctionId")({
   component: LiveAuctionRoom,
@@ -29,6 +30,7 @@ function LiveAuctionRoom() {
     disconnect,
   } = useAuctionStore();
   const queryClient = useQueryClient();
+  const { isOpen: isDrawerOpen, reset: resetDrawer } = useDrawerStore();
 
   const [now, setNow] = useState(() => Date.now());
   const [bidAmount, setBidAmount] = useState<string>("");
@@ -48,8 +50,11 @@ function LiveAuctionRoom() {
 
   useEffect(() => {
     connect(auctionId);
-    return () => disconnect();
-  }, [auctionId, connect, disconnect]);
+    return () => {
+      disconnect();
+      resetDrawer();
+    };
+  }, [auctionId, connect, disconnect, resetDrawer]);
 
   const handlePlaceBid = (amount: string) => {
     setBidError(null);
@@ -129,7 +134,9 @@ function LiveAuctionRoom() {
 
 
   return (
-    <div className="min-h-[calc(100vh-73px)] bg-white pb-85 md:pb-12">
+    <div
+      className={`min-h-[calc(100vh-73px)] bg-white ${isDrawerOpen ? "pb-85" : "pb-24"} md:pb-12`}
+    >
       <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:px-6 md:py-8 lg:gap-12">
         <div className="flex w-full flex-col gap-6 md:w-[60%] lg:w-[65%]">
           <div className="group relative aspect-square w-full overflow-hidden bg-zinc-100 md:aspect-4/3 md:rounded-4xl">
@@ -153,34 +160,6 @@ function LiveAuctionRoom() {
             <h1 className="mb-6 text-3xl leading-[1.1] font-black tracking-tight text-zinc-900 md:text-5xl">
               {auctionData.title}
             </h1>
-
-            <div className="mb-6 flex flex-col gap-4 rounded-3xl bg-zinc-50 p-6 md:hidden">
-              <div>
-                <p className="mb-1 text-sm font-semibold tracking-wider text-zinc-500 uppercase">
-                  {displayIsEnded ? "Final Price" : "Current Bid"}
-                </p>
-                <div className="text-4xl font-black tracking-tighter text-zinc-900">
-                  $
-                  {Number(displayPrice).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </div>
-              </div>
-
-              <div className="h-px w-full bg-zinc-200" />
-
-              <div>
-                <p className="mb-1 text-sm font-semibold tracking-wider text-zinc-500 uppercase">
-                  {displayIsEnded ? "Status" : "Time Remaining"}
-                </p>
-                <div
-                  className={`text-2xl font-bold tracking-tight ${displayTime && displayTime <= 60 && !displayIsEnded ? "animate-pulse text-red-500" : "text-zinc-900"}`}
-                >
-                  {displayIsEnded ? "ENDED" : formatTime(displayTime)}
-                </div>
-              </div>
-            </div>
 
             <div className="prose max-w-none prose-zinc">
               <p className="text-lg leading-relaxed whitespace-pre-wrap text-zinc-600">
@@ -266,19 +245,14 @@ function LiveAuctionRoom() {
         </div>
       </div>
 
-      <div className="fixed right-0 bottom-0 left-0 z-50 rounded-t-3xl border-t border-zinc-200 bg-white/95 p-5 shadow-[0_-20px_40px_rgba(0,0,0,0.1)] backdrop-blur-xl md:hidden">
-        {!displayIsEnded ? (
-          <div className="mb-4 flex items-center justify-between px-1">
-            <span className="text-sm font-bold tracking-wider text-zinc-500 uppercase">
-              Ends In
-            </span>
-            <span
-              className={`text-xl font-black ${displayTime && displayTime <= 60 && !displayIsEnded ? "animate-pulse text-red-500" : "text-zinc-900"}`}
-            >
-              {formatTime(displayTime)}
-            </span>
-          </div>
-        ) : null}
+      <MobileBiddingDrawer
+        displayPrice={displayPrice}
+        displayTime={displayTime}
+        displayIsEnded={displayIsEnded}
+        isLosing={!!isLosing}
+        displayHasParticipated={displayHasParticipated}
+        className="md:hidden"
+      >
         <BiddingTerminal
           displayIsEnded={displayIsEnded}
           isWinning={!!isWinning}
@@ -298,7 +272,7 @@ function LiveAuctionRoom() {
           }}
           isPending={placeBidMutation.isPending}
         />
-      </div>
+      </MobileBiddingDrawer>
     </div>
   );
 }
