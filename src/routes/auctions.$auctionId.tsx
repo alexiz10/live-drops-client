@@ -115,6 +115,22 @@ function LiveAuctionRoom() {
     return `${mStr}:${sStr}`;
   };
 
+  const getQuickBidIncrements = (basePrice: number, hasBids: boolean): number[] => {
+    if (!hasBids) {
+      // No bids yet, start from 0 increment
+      if (basePrice < 100) return [0, 1, 2];
+      if (basePrice < 1000) return [0, 10, 20];
+      if (basePrice < 10000) return [0, 100, 200];
+      return [0, 1000, 2000];
+    }
+
+    // There are bids, use standard increments
+    if (basePrice < 100) return [1, 2, 3];
+    if (basePrice < 1000) return [10, 20, 30];
+    if (basePrice < 10000) return [100, 200, 300];
+    return [1000, 2000, 3000];
+  };
+
   const allBids = [...(initialBids || []), ...useAuctionStore(state => state.liveBids)];
 
   // Deduplicate by timestamp and amount to avoid showing the same bid twice
@@ -232,26 +248,30 @@ function LiveAuctionRoom() {
       {displayIsEnded ? null : auth.status === "authenticated" ? (
         <form onSubmit={handleBidSubmit} noValidate className="flex flex-col gap-3">
           <div className="flex gap-2">
-            {[1, 2, 3].map(amount => {
+            {(() => {
               const basePrice =
                 isWinning && displayUserMaxBid
                   ? Number(displayUserMaxBid)
                   : isNaN(Number(displayPrice))
                     ? 0
                     : Number(displayPrice);
-              const quickBidAmount = basePrice + amount;
-              return (
-                <button
-                  key={amount}
-                  type="button"
-                  onClick={() => handlePlaceBid(quickBidAmount.toString())}
-                  disabled={placeBidMutation.isPending}
-                  className="flex-1 cursor-pointer rounded-xl bg-zinc-100 py-2.5 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  ${quickBidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </button>
-              );
-            })}
+              const increments = getQuickBidIncrements(basePrice, hasBids);
+
+              return increments.map(increment => {
+                const quickBidAmount = basePrice + increment;
+                return (
+                  <button
+                    key={increment}
+                    type="button"
+                    onClick={() => handlePlaceBid(quickBidAmount.toString())}
+                    disabled={placeBidMutation.isPending}
+                    className="flex-1 cursor-pointer rounded-xl bg-zinc-100 py-2.5 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ${quickBidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </button>
+                );
+              });
+            })()}
           </div>
 
           <div className="relative">
