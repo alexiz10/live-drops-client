@@ -300,7 +300,7 @@ function LiveAuctionRoom() {
 
           <button
             type="submit"
-            disabled={placeBidMutation.isPending}
+            disabled={placeBidMutation.isPending || !bidAmount}
             className="w-full cursor-pointer rounded-2xl bg-black p-4 text-lg font-bold text-white shadow-xl shadow-black/10 transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {placeBidMutation.isPending ? "Processing..." : "Set Max Bid"}
